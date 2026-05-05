@@ -17,4 +17,4 @@ def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon):
         x_best = x_best - alpha * vel_hat / (epsilon + np.sqrt(sqr_hat))
         path.append(x_best)
         alpha *= gamma
-    return path[-1]
+    return path, alpha
