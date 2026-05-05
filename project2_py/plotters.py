@@ -31,19 +31,19 @@ def plot_contour(a, b, z, path=None, ax=None, draw_contour = True):
     else:
         show_plot = False
 
-    if draw_contour: ax.contour(a, b, z, levels=all_levels)
+    if draw_contour: ax.contour(a, b, z, levels=all_levels, colors="#282853", linestyles='solid')
 
     # If there's an optimization path, plot it
     if path is not None:
         path = np.array(path)
         if draw_contour == True:
-            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5, label="Optimization Path")
-            ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
-            ax.plot(path[-1, 0], path[-1, 1], 'b*', markersize=10, label="Finish")
+            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5, label="Optimization Path")
+            #ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
+            ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10, label="Finish")
         else:
-            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5)
-            ax.plot(path[0, 0], path[0, 1], 'go')
-            ax.plot(path[-1, 0], path[-1, 1], 'b*', markersize=10)
+            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5)
+            #ax.plot(path[0, 0], path[0, 1], 'go')
+            ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10)
         ax.legend(fontsize='x-small')
 
     ax.set_title("Contour Plot of Z = f(A, B)")
@@ -90,17 +90,30 @@ def plot_problem(problem, plot_size=3):
         if problem.xdim > 0: x[0] = x1_val
         if problem.xdim > 1: x[1] = x2_val
         return problem._wrapped_f(x)
-
+    
+    def get_max_constraint(x1_val, x2_val):
+        x = np.zeros(problem.xdim)
+        if problem.xdim > 0: x[0] = x1_val
+        if problem.xdim > 1: x[1] = x2_val
+        return np.max(problem.c(x))
+    
     x1 = np.linspace(-plot_size, plot_size, 100)
     x2 = np.linspace(-plot_size, plot_size, 100)
     A, B = np.meshgrid(x1, x2)
+    
     vectorized_f = np.vectorize(get_wrappedf)
     Z = vectorized_f(A, B)
-    path = None
 
+    vectorized_c = np.vectorize(get_max_constraint)
+    C_max = vectorized_c(A, B)
+    
     _, ax = plt.subplots()
     plot_contour(A, B, Z, ax=ax, draw_contour=True)
-    for _ in range(3):
+    ax.contourf(A, B, C_max, levels=[-np.inf, 0], colors=["#E1FF00"], alpha=0.5)
+    ax.contour(A, B, C_max, levels=[0], colors=['black'], linewidths = 1.5)
+    
+    path = None
+    for _ in range(25):
         problem._reset() 
         path = optimize_with_history(
             problem.f,

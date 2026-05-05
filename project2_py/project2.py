@@ -105,10 +105,10 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
     if prob == 'simple2':
         simple2_params = {
             'rho': 1.0,
-            'gamma_rho': 1.1,
+            'gamma_rho': 1.5,
             'num_inner_loops': 12,
             'alpha': 0.32,
-            'gamma': 0.90,
+            'gamma': 0.75,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -126,7 +126,46 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple3_params)    
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple3_params)
+
+    if prob == 'secret1':
+        secret1_params = {
+            'rho': 1.0,
+            'gamma_rho': 1.02,
+            'num_inner_loops': 12,
+            'alpha': 0.32,
+            'gamma': 0.95,
+            'gamma_v': 0.9,
+            'gamma_s': 0.999,
+            'epsilon': 1e-8
+            }
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret1_params)
+    
+    if prob == 'secret2':
+        secret2_params = {
+            'rho': 1.0,
+            'gamma_rho': 1.02,
+            'num_inner_loops': 12,
+            'alpha': 0.32,
+            'gamma': 0.95,
+            'gamma_v': 0.9,
+            'gamma_s': 0.999,
+            'epsilon': 1e-8
+            }
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret2_params)
+
+    else:
+        default_params = {
+            'rho': 1.0,
+            'gamma_rho': 1.02,
+            'num_inner_loops': 12,
+            'alpha': 0.32,
+            'gamma': 0.95,
+            'gamma_v': 0.9,
+            'gamma_s': 0.999,
+            'epsilon': 1e-8
+            }
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, default_params)
 
     return path
 
