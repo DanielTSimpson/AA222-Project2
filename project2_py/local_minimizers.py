@@ -1,13 +1,12 @@
 import numpy as np
 
-def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon, term_threshold = 0.001):
+def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon):
     path = [x0]
     x_best = x0
     x_len = len(x0)
     sqr = np.zeros(x_len)
     vel = np.zeros(x_len)
     k = 0
-    if n == np.inf: f_prev = f(x_best)
     while count() + (3 + x_len) < n:
         k += 1
         gradient = g(x_best)
@@ -17,10 +16,5 @@ def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon, 
         sqr_hat = sqr / (1 - gamma_s**k)
         x_best = x_best - alpha * vel_hat / (epsilon + np.sqrt(sqr_hat))
         path.append(x_best)
-        if n == np.inf:
-            f_curr = f(x_best)
-            if abs(f_curr - f_prev) < term_threshold: 
-                break
-            f_prev = f_curr
         alpha *= gamma
     return path[-1]
