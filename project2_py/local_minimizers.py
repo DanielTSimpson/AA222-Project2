@@ -8,7 +8,6 @@ def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon, 
     if vel is None: vel = np.zeros(x_len)
     if cost_g is None: cost_g = 3 + x_len
 
-    # Using <= ensures we don't accidentally exceed n, but get exactly to n
     while count() + cost_g <= n:
         k += 1
         gradient = g(x_best) # Costs 
@@ -16,7 +15,10 @@ def adam_optimizer(f, g, x0, n, count, alpha, gamma, gamma_v, gamma_s, epsilon, 
         sqr = gamma_s*sqr + (1-gamma_s)*(gradient**2)
         vel_hat = vel / (1 - gamma_v**k)
         sqr_hat = sqr / (1 - gamma_s**k)
-        x_best = x_best - alpha * vel_hat / (epsilon + np.sqrt(sqr_hat))
+        step = alpha * vel_hat / (epsilon + np.sqrt(sqr_hat))
+        x_best = x_best - step
         path.append(x_best)
         alpha *= gamma
+        if np.linalg.norm(step) < epsilon:
+            break
     return path, alpha, k, vel, sqr
