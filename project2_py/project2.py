@@ -22,7 +22,7 @@ except ImportError:
     from local_minimizers import adam_optimizer
 
 
-def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
+def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params = None, alpha_passthrough = False):
     #Hyper terms
     x_length = len(x0)
 
@@ -47,20 +47,18 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
         if len(mu) == 0:
             return 0.0
         constraints = np.array(c(x)).flatten()
-        p_Lagrange = 0
-        for i in range(len(constraints)): # For every constraint, sum the maxes to the penalty function
-            p_Lagrange += (np.maximum(mu[i] + rho*constraints[i], 0)**2 - mu[i]**2) / (2*rho) # Penalty term
-        return float(p_Lagrange)
-    
+        return float(np.sum((np.maximum(mu + rho*constraints, 0)**2 - mu**2) / (2*rho)))
+
     def penalty_g(x, mu, rho, c, h = 1e-5): # Each penalty_g call costs 1 + x_length
         x_length = len(x)
         penalty_gh = np.zeros(x_length)
         if len(mu) == 0:
             return penalty_gh
-        identity = np.identity(x_length)
         p0 = penalty(x, mu, rho, c)
-        for idx, _ in enumerate(identity): # Perform a forward difference method to get the approx gradient of the pentalty
-            penalty_gh[idx] = penalty(x + identity[idx]*h, mu, rho, c) - p0
+        for i in range(x_length): # Perform a forward difference method to get the approx gradient of the pentalty
+            x_h = np.copy(x)
+            x_h[i] += h
+            penalty_gh[i] = penalty(x_h, mu, rho, c) - p0
         return penalty_gh / h
 
     vel = np.zeros(x_length)
@@ -77,7 +75,7 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
         evals_for_mu = 1 if len(mu) > 0 else 0
         augmented_n = np.minimum(count() + cost_g * num_inner_loops, n - evals_for_mu)
         
-        adam_path, _, k, vel, sqr = adam_optimizer(
+        adam_path, new_alpha, k, vel, sqr = adam_optimizer(
             augmented_f, augmented_g, x, augmented_n, count, 
             alpha, gamma, gamma_v, gamma_s, epsilon, 
             k, vel, sqr, cost_g
@@ -88,8 +86,11 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
             mu = np.maximum(mu + rho * np.array(c(x_new)).flatten(), 0) # Update the Lagrange multiplier (This costs 1)          
         path.append(x_new)
         rho = rho * gamma_rho # Slowly increase rho to penalize the constraint term more as we approach the optimum 
-        #alpha = alpha / np.sqrt(rho) # Decay alpha as rho increases so ADAM takes smaller steps with higher penalties on the constraint terms
-        alpha = params.get('alpha', 0.32) # Restore sub-problem step size
+        
+        if alpha_passthrough:
+            alpha = new_alpha
+        else:
+            alpha = params.get('alpha', 0.32) # Restore sub-problem step size
     return path
 
 
@@ -111,6 +112,7 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
 
     path = [x0]
     if prob == 'simple1':  ### Augmented Lagrange Method (ALM) ###
+        #return []
         simple1_params = {
             'rho': 1.0,
             'gamma_rho': 1.50,
@@ -123,7 +125,8 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             }
         path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple1_params)
 
-    if prob == 'simple2':
+    elif prob == 'simple2':
+        #return []
         simple2_params = {
             'rho': 1.0,
             'gamma_rho': 1.5,
@@ -136,7 +139,8 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             }
         path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple2_params)
 
-    if prob == 'simple3':
+    elif prob == 'simple3':
+        #return []
         simple3_params = {
             'rho': 1.0,
             'gamma_rho': 1.50,
@@ -149,44 +153,31 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             }
         path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple3_params)
 
-    if prob == 'secret1':
+    elif prob == 'secret1':
         secret1_params = {
             'rho': 1.0,
             'gamma_rho': 1.50,
-            'num_inner_loops': 4,
-            'alpha': 0.32,
-            'gamma': 0.75,
+            'num_inner_loops': 3,
+            'alpha': 0.50,
+            'gamma': 0.99,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret1_params)
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret1_params, alpha_passthrough = True)
     
-    if prob == 'secret2':
+    elif prob == 'secret2':
         secret2_params = {
             'rho': 1.0,
             'gamma_rho': 1.50,
-            'num_inner_loops': 4,
-            'alpha': 0.32,
-            'gamma': 0.75,
+            'num_inner_loops': 3,
+            'alpha': 0.50,
+            'gamma': 0.99,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret2_params)
-
-    else:
-        default_params = {
-            'rho': 1.0,
-            'gamma_rho': 1.02,
-            'num_inner_loops': 12,
-            'alpha': 0.32,
-            'gamma': 0.95,
-            'gamma_v': 0.9,
-            'gamma_s': 0.999,
-            'epsilon': 1e-8
-            }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, default_params)
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret2_params, alpha_passthrough = True)
 
     return path
 
