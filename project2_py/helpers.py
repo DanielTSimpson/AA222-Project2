@@ -4,7 +4,7 @@
 
 # this file defines the optimization problems and test
 
-from tqdm import tqdm
+#from tqdm import tqdm
 import numpy as np
 
 class OptimizationProblem:
@@ -212,7 +212,8 @@ def test_optimize(optimize, tests_to_run, n_trials):
 
         solution_feasible = []
         any_count_exceeded = False
-        for seed in tqdm(range(n_trials)):
+        #for seed in tqdm(range(n_trials)):
+        for seed in range(n_trials):
             p = test()
             np.random.seed(seed)
             x0 = p.x0()

@@ -27,7 +27,11 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
     x_length = len(x0)
 
     # ALM Terms
-    mu = np.zeros(len(c(x0)))
+    if count() < n:
+        c0 = np.array(c(x0)).flatten() # Costs 1
+        mu = np.zeros(len(c0))
+    else:
+        mu = np.array([])
     rho = params.get('rho', 1.0)
     gamma_rho = params.get('gamma_rho', 1.01)
     num_inner_loops = params.get('num_inner_loops', 12)
@@ -40,35 +44,52 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params=None):
     epsilon = params.get('epsilon', 1e-8)
 
     def penalty(x, mu, rho, c): # Each penalty call costs 1
-        constraints = c(x)
+        if len(mu) == 0:
+            return 0.0
+        constraints = np.array(c(x)).flatten()
         p_Lagrange = 0
         for i in range(len(constraints)): # For every constraint, sum the maxes to the penalty function
             p_Lagrange += (np.maximum(mu[i] + rho*constraints[i], 0)**2 - mu[i]**2) / (2*rho) # Penalty term
-        return p_Lagrange
+        return float(p_Lagrange)
     
     def penalty_g(x, mu, rho, c, h = 1e-5): # Each penalty_g call costs 1 + x_length
         x_length = len(x)
         penalty_gh = np.zeros(x_length)
+        if len(mu) == 0:
+            return penalty_gh
         identity = np.identity(x_length)
         p0 = penalty(x, mu, rho, c)
         for idx, _ in enumerate(identity): # Perform a forward difference method to get the approx gradient of the pentalty
             penalty_gh[idx] = penalty(x + identity[idx]*h, mu, rho, c) - p0
         return penalty_gh / h
 
-    cost_per_iter = 5 + x_length
+    vel = np.zeros(x_length)
+    sqr = np.zeros(x_length)
     k = 0
     while count() < n:
+        
         x = path[-1]
+        
         augmented_f = lambda x: f(x) + penalty(x, mu, rho, c) # Each augmented_f call costs 2
         augmented_g = lambda x: g(x) + penalty_g(x, mu, rho, c) # Each augmented_g call costs 3 + x_length
-        augmented_n = np.minimum(count()+cost_per_iter*num_inner_loops, n - 1)
-        adam_path, _ = adam_optimizer(augmented_f, augmented_g, x, augmented_n, count, alpha, gamma, gamma_v, gamma_s, epsilon)
+
+        cost_g = 3 + x_length if len(mu) > 0 else 2 
+        evals_for_mu = 1 if len(mu) > 0 else 0
+        augmented_n = np.minimum(count() + cost_g * num_inner_loops, n - evals_for_mu)
+        
+        adam_path, _, k, vel, sqr = adam_optimizer(
+            augmented_f, augmented_g, x, augmented_n, count, 
+            alpha, gamma, gamma_v, gamma_s, epsilon, 
+            k, vel, sqr, cost_g
+        )
+        
         x_new = adam_path[-1]
-        mu = np.maximum(mu + rho * c(x_new), 0) # Update the Lagrange multiplier (This costs 1)          
+        if len(mu) > 0 and count() < n:
+            mu = np.maximum(mu + rho * np.array(c(x_new)).flatten(), 0) # Update the Lagrange multiplier (This costs 1)          
         path.append(x_new)
         rho = rho * gamma_rho # Slowly increase rho to penalize the constraint term more as we approach the optimum 
         #alpha = alpha / np.sqrt(rho) # Decay alpha as rho increases so ADAM takes smaller steps with higher penalties on the constraint terms
-        k += 1
+        alpha = params.get('alpha', 0.32) # Restore sub-problem step size
     return path
 
 
@@ -92,10 +113,10 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
     if prob == 'simple1':  ### Augmented Lagrange Method (ALM) ###
         simple1_params = {
             'rho': 1.0,
-            'gamma_rho': 1.02,
+            'gamma_rho': 1.50,
             'num_inner_loops': 12,
             'alpha': 0.32,
-            'gamma': 0.95,
+            'gamma': 0.75,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -118,10 +139,10 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
     if prob == 'simple3':
         simple3_params = {
             'rho': 1.0,
-            'gamma_rho': 1.02,
+            'gamma_rho': 1.50,
             'num_inner_loops': 12,
             'alpha': 0.32,
-            'gamma': 0.95,
+            'gamma': 0.75,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -131,10 +152,10 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
     if prob == 'secret1':
         secret1_params = {
             'rho': 1.0,
-            'gamma_rho': 1.02,
-            'num_inner_loops': 12,
+            'gamma_rho': 1.50,
+            'num_inner_loops': 4,
             'alpha': 0.32,
-            'gamma': 0.95,
+            'gamma': 0.75,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -144,10 +165,10 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
     if prob == 'secret2':
         secret2_params = {
             'rho': 1.0,
-            'gamma_rho': 1.02,
-            'num_inner_loops': 12,
+            'gamma_rho': 1.50,
+            'num_inner_loops': 4,
             'alpha': 0.32,
-            'gamma': 0.95,
+            'gamma': 0.75,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -182,7 +203,7 @@ if __name__ == '__main__':
         from .plotters import plot_problem
     except ImportError:
         from plotters import plot_problem
-    current_problem = Simple2()
+    current_problem = Simple1()
     if current_problem.xdim == 2:
         print(f"Rendering 2D optimization paths for {current_problem.prob}...")
         plot_problem(current_problem, plot_size=3)
