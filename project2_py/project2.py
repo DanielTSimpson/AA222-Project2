@@ -22,7 +22,7 @@ except ImportError:
     from local_minimizers import adam_optimizer
 
 
-def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params = None, alpha_passthrough = False):
+def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params = None):
     #Hyper terms
     x_length = len(x0)
 
@@ -75,7 +75,7 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params = None, alpha_pa
         evals_for_mu = 1 if len(mu) > 0 else 0
         augmented_n = np.minimum(count() + cost_g * num_inner_loops, n - evals_for_mu)
         
-        adam_path, new_alpha, k, vel, sqr = adam_optimizer(
+        adam_path, alpha, k, vel, sqr = adam_optimizer(
             augmented_f, augmented_g, x_old, augmented_n, count, 
             alpha, gamma, gamma_v, gamma_s, epsilon, 
             k, vel, sqr, cost_g
@@ -86,15 +86,13 @@ def augmented_lagrange_ADAM(f, g, c, x0, n, count, path, params = None, alpha_pa
             mu = np.maximum(mu + rho * np.array(c(x_new)).flatten(), 0) # Update the Lagrange multiplier (This costs 1)          
         path.append(x_new)
         rho = rho * gamma_rho # Slowly increase rho to penalize the constraint term more as we approach the optimum 
-        
-        if alpha_passthrough:
-            alpha = new_alpha
-        else:
-            alpha = params.get('alpha', 0.32) # Restore sub-problem step size
 
         if np.linalg.norm(x_new - x_old) < epsilon:
             break
     return path
+
+
+#def simple_penalty(f, g, c, x0, n, count, path, params = None, alpha_passthrough = False)
 
 
 def optimize_with_history(f, g, c, x0, n, count, prob):
@@ -120,8 +118,8 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             'rho': 1.0,
             'gamma_rho': 1.50,
             'num_inner_loops': 12,
-            'alpha': 0.32,
-            'gamma': 0.75,
+            'alpha': 0.50,
+            'gamma': 0.98,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -130,7 +128,7 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
 
     elif prob == 'simple2':
         #return []
-        simple2_params = {
+        simple2_paramso = {
             'rho': 1.0,
             'gamma_rho': 1.5,
             'num_inner_loops': 12,
@@ -140,16 +138,36 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
+        simple2_params = {
+            'rho': 1.0,
+            'gamma_rho': 1.5,
+            'num_inner_loops': 12,
+            'alpha': 0.10,
+            'gamma': 0.99999,
+            'gamma_v': 0.9,
+            'gamma_s': 0.999,
+            'epsilon': 1e-8
+            }
         path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, simple2_params)
 
     elif prob == 'simple3':
         #return []
-        simple3_params = {
+        simple3_paramso = {
             'rho': 1.0,
             'gamma_rho': 1.50,
             'num_inner_loops': 12,
             'alpha': 0.32,
             'gamma': 0.75,
+            'gamma_v': 0.9,
+            'gamma_s': 0.999,
+            'epsilon': 1e-8
+            }
+        simple3_params = {
+            'rho': 1.0,
+            'gamma_rho': 1.50,
+            'num_inner_loops': 12,
+            'alpha': 0.50,
+            'gamma': 0.99,
             'gamma_v': 0.9,
             'gamma_s': 0.999,
             'epsilon': 1e-8
@@ -168,7 +186,7 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret1_params, alpha_passthrough = True)
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret1_params)
     
     elif prob == 'secret2':
         #return []
@@ -182,7 +200,7 @@ def optimize_with_history(f, g, c, x0, n, count, prob):
             'gamma_s': 0.999,
             'epsilon': 1e-8
             }
-        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret2_params, alpha_passthrough = True)
+        path = augmented_lagrange_ADAM(f, g, c, x0, n, count, path, secret2_params)
 
     return path
 
