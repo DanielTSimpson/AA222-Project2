@@ -31,22 +31,30 @@ def plot_contour(a, b, z, path=None, ax=None, draw_contour = True):
     else:
         show_plot = False
 
-    if draw_contour: ax.contour(a, b, z, levels=all_levels, colors="#282853", linestyles='solid')
+    if draw_contour: ax.contour(a, b, z, levels=all_levels, colors="#282853", linestyles='solid', linewidths=0.5)
 
     # If there's an optimization path, plot it
     if path is not None:
         path = np.array(path)
         if draw_contour == True:
-            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5, label="Optimization Path")
-            #ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
+            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75, label="Optimization Path")
+            ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
             ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10, label="Finish")
         else:
-            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.5)
-            #ax.plot(path[0, 0], path[0, 1], 'go')
+            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75)
+            ax.plot(path[0, 0], path[0, 1], 'go')
             ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10)
-        ax.legend(fontsize='x-small')
-
-    ax.set_title("Contour Plot of Z = f(A, B)")
+    
+    from matplotlib.lines import Line2D
+    custom_legend = [Line2D([0], [0], color="#282853", linewidth=0.5, label="Contour Lines")]
+    if path is not None:
+        custom_legend.extend([
+            Line2D([0], [0], color="r", linewidth=0.75, label="Optimization Path"),
+            Line2D([0], [0], color="g", marker="o", linestyle="None", label="Start"),
+            Line2D([0], [0], color="m", marker="*", markersize=10, linestyle="None", label="Finish")
+        ])
+    ax.legend(handles=custom_legend, fontsize='x-small')
+    ax.set_title("Contour Plot of Simple1 using QPM + ADAM")
     ax.set_xlabel("A")
     ax.set_ylabel("B")
     
@@ -74,11 +82,39 @@ def plot_convergence(problem):
         plt.plot(iters, f_vals)
     titles = [f'Run {i+1}' for i in range(3)] # More generic labels
     plt.xlabel("Iterations")
-    plt.ylabel("Function Value")
-    plt.title(f"Convergence Plot for {problem.prob}")
+    plt.ylabel("Objective Value")
+    plt.title(f"Objective Value vs # Iterations for {problem.prob} using QPM")
     plt.legend(titles)
     plt.grid(True)
     plt.show()
+
+
+def plot_constraint(problem):
+    plt.figure()
+    for _ in range(3):
+        problem._reset() 
+        path = optimize_with_history(
+            problem.f,
+            problem.g,
+            problem.c,
+            problem.x0(),
+            problem.n,
+            problem.count,
+            problem.prob
+        )
+        iters = range(len(path))
+        c_vals = np.zeros(len(path))
+        for idx, value in enumerate(path):
+            c_vals[idx] = np.max(problem.c(value))
+        plt.plot(iters, c_vals)
+    titles = [f'Run {i+1}' for i in range(3)] # More generic labels
+    plt.xlabel("Iterations")
+    plt.ylabel("Maximum Constraint Value")
+    plt.title(f"Max Constraint vs # Iterations for {problem.prob} using QPM")
+    plt.legend(titles)
+    plt.grid(True)
+    plt.show()
+
 
 
 def plot_problem(problem, plot_size=3):
@@ -113,7 +149,7 @@ def plot_problem(problem, plot_size=3):
     ax.contour(A, B, C_max, levels=[0], colors=['black'], linewidths = 1.5)
     
     path = None
-    for _ in range(25):
+    for _ in range(3):
         problem._reset() 
         path = optimize_with_history(
             problem.f,
