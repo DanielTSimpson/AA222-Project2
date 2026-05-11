@@ -37,20 +37,20 @@ def plot_contour(a, b, z, path=None, ax=None, draw_contour = True):
     if path is not None:
         path = np.array(path)
         if draw_contour == True:
-            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75, label="Optimization Path")
-            ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
+            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75, label="Optimization Path")
+            #ax.plot(path[0, 0], path[0, 1], 'go', label = "Start")
             ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10, label="Finish")
         else:
-            ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75)
-            ax.plot(path[0, 0], path[0, 1], 'go')
+            #ax.plot(path[:, 0], path[:, 1], 'r', linewidth = 0.75)
+            #ax.plot(path[0, 0], path[0, 1], 'go')
             ax.plot(path[-1, 0], path[-1, 1], 'm*', markersize=10)
     
     from matplotlib.lines import Line2D
     custom_legend = [Line2D([0], [0], color="#282853", linewidth=0.5, label="Contour Lines")]
     if path is not None:
         custom_legend.extend([
-            Line2D([0], [0], color="r", linewidth=0.75, label="Optimization Path"),
-            Line2D([0], [0], color="g", marker="o", linestyle="None", label="Start"),
+            #Line2D([0], [0], color="r", linewidth=0.75, label="Optimization Path"),
+            #Line2D([0], [0], color="g", marker="o", linestyle="None", label="Start"),
             Line2D([0], [0], color="m", marker="*", markersize=10, linestyle="None", label="Finish")
         ])
     ax.legend(handles=custom_legend, fontsize='x-small')
@@ -149,7 +149,7 @@ def plot_problem(problem, plot_size=3):
     ax.contour(A, B, C_max, levels=[0], colors=['black'], linewidths = 1.5)
     
     path = None
-    for _ in range(3):
+    for _ in range(50):
         problem._reset() 
         path = optimize_with_history(
             problem.f,
